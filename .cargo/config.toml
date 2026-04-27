@@ -1,0 +1,17 @@
+# Cross-compile target config for the Raspberry Pi 5 (aarch64 Bookworm/Trixie).
+#
+# Two paths to a Pi-ready binary, pick one:
+#
+# (A) Native GNU toolchain (recommended on WSL Ubuntu/Debian):
+#       sudo apt install gcc-aarch64-linux-gnu
+#       rustup target add aarch64-unknown-linux-gnu
+#       cargo build --release --target aarch64-unknown-linux-gnu
+#
+# (B) `cross` (Docker-based, no host toolchain needed):
+#       cargo install cross
+#       cross build --release --target aarch64-unknown-linux-gnu
+#
+# Path (A) uses this linker setting; path (B) ignores it (the container has its own).
+
+[target.aarch64-unknown-linux-gnu]
+linker = "aarch64-linux-gnu-gcc"

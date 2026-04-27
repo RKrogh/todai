@@ -1,0 +1,5 @@
+# Config for `cross` (Docker-based cross-compile).
+# Only used when invoking `cross build` instead of `cargo build`.
+
+[target.aarch64-unknown-linux-gnu]
+image = "ghcr.io/cross-rs/aarch64-unknown-linux-gnu:main"

@@ -1,0 +1,21 @@
+[package]
+name = "todai"
+version = "0.1.0"
+edition = "2024"
+description = "AI-powered cross-machine todo and reminder system"
+license = "MIT"
+
+[dependencies]
+serde_json = "1"
+anyhow = "1.0.102"
+chrono = { version = "0.4.44", features = ["serde"] }
+chrono-tz = "0.10.4"
+clap = { version = "4.6.1", features = ["derive"] }
+colored = "3.1.1"
+dirs = "6.0.0"
+nanoid = "0.5.0"
+serde = { version = "1.0.228", features = ["derive"] }
+serde-saphyr = "0.0.24"
+slug = "0.1.6"
+toml = "1.1.2"
+walkdir = "2.5.0"

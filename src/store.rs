@@ -99,6 +99,32 @@ impl Store {
         Ok(())
     }
 
+    pub fn archive_dir(&self) -> PathBuf {
+        self.root.join(".archive")
+    }
+
+    /// Move a stored todo's file into `.archive/`, mirroring its context path
+    /// (e.g. `work/staff/x.md` -> `.archive/work/staff/x.md`). Returns the new path.
+    /// `.archive/` is in `.stignore`, so archived items do not sync back out.
+    pub fn archive(&self, stored: &StoredTodo) -> Result<PathBuf> {
+        let rel = stored.path.strip_prefix(&self.root).with_context(|| {
+            format!(
+                "todo path {} is not under store root {}",
+                stored.path.display(),
+                self.root.display()
+            )
+        })?;
+        let target = self.archive_dir().join(rel);
+        if let Some(parent) = target.parent() {
+            fs::create_dir_all(parent)
+                .with_context(|| format!("creating archive dir {}", parent.display()))?;
+        }
+        fs::rename(&stored.path, &target).with_context(|| {
+            format!("moving {} to {}", stored.path.display(), target.display())
+        })?;
+        Ok(target)
+    }
+
     pub fn read(&self, path: &Path) -> Result<StoredTodo> {
         let content = fs::read_to_string(path)
             .with_context(|| format!("reading {}", path.display()))?;
@@ -294,6 +320,25 @@ mod tests {
         fs::write(&conflict_path, "garbage").unwrap();
         let all = store.list_all().unwrap();
         assert_eq!(all.len(), 2);
+        fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn archive_moves_file_mirroring_context_and_drops_from_list() {
+        let root = tmp_root();
+        let store = Store::new(&root);
+        store.ensure_root().unwrap();
+        let path = store.write(&make_todo("old-task", "work:staff")).unwrap();
+        assert!(path.exists());
+
+        let stored = store.read(&path).unwrap();
+        let archived = store.archive(&stored).unwrap();
+
+        assert!(!path.exists(), "original file should be gone after archive");
+        assert!(archived.ends_with(".archive/work/staff/old-task.md"));
+        assert!(archived.exists());
+        // list_all skips .archive, so the archived todo no longer shows up.
+        assert!(store.list_all().unwrap().is_empty());
         fs::remove_dir_all(&root).ok();
     }
 

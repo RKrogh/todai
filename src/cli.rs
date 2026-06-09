@@ -85,6 +85,13 @@ pub enum Command {
         id: String,
     },
 
+    /// Sweep done/cancelled todos older than archive_after_days into .archive/
+    Archive {
+        /// Show what would be archived without moving anything
+        #[arg(long)]
+        dry_run: bool,
+    },
+
     /// Mark a reminder as notified (used by the agent after sending)
     Notified {
         /// Todo identifier

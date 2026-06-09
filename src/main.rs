@@ -34,6 +34,7 @@ fn main() -> Result<()> {
         cli::Command::Today { json } => commands::today::run(&root, json)?,
         cli::Command::Show { id, history, json } => commands::show::run(&root, id, history, json)?,
         cli::Command::Done { id } => commands::done::run(&root, id)?,
+        cli::Command::Archive { dry_run } => commands::archive::run(&root, dry_run)?,
         cli::Command::Notified { id, reminder } => commands::notified::run(&root, id, reminder)?,
         cli::Command::Snooze { id, for_ } => commands::snooze::run(&root, id, for_)?,
     }

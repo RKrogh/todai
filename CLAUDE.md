@@ -21,7 +21,8 @@ notifications through Home Assistant.
 ## Development notes
 
 - Primary dev environment is WSL (Linux). Target platforms: x86_64-linux and aarch64-linux (Pi).
-- Use `cross` for ARM64 compilation: `cross build --target aarch64-unknown-linux-gnu --release`
+- Use `cross` for ARM64 compilation: `cross build --target aarch64-unknown-linux-musl --release`
+  (static musl, not gnu: the Pi runs HAOS and the binary executes inside Alpine containers)
 - Todo data folder is separate from this repo. Default: `~/.todai/` or configured in `.todai/config.toml`
 - The AI agent is a separate Python project in `agent/`, not part of the Rust binary.
 - Keep the CLI fast and dependency-light. No network calls from the CLI itself.

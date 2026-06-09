@@ -14,7 +14,7 @@ upcoming tasks and sends context-aware notifications.
 │             │     │  (Android)  │     │  (HomeAssistant)  │
 │  todai CLI  │◄───►│  Syncthing  │◄───►│  Syncthing        │
 │  edit/view  │     │  view only? │     │  AI agentic loop  │
-│             │     │  HA notifs  │     │  systemd timer    │
+│             │     │  HA notifs  │     │  agent add-on     │
 └─────────────┘     └─────────────┘     └──────────────────┘
        │                                        │
        └──────── Syncthing (encrypted) ─────────┘
@@ -134,6 +134,8 @@ todai list --json                       # machine-readable; used by the agent
 
 # Managing todos
 todai done "plant-carrots"              # mark as done (by id, slug, or fuzzy match)
+todai archive                           # sweep done/cancelled items past archive_after_days into .archive/
+todai archive --dry-run                 # preview what would be swept, move nothing
 todai edit "plant-carrots"              # open in $EDITOR
 todai show "plant-carrots"              # display full todo (times in local TZ)
 todai show "plant-carrots" --history    # follow prev_id chain for recurring tasks
@@ -171,7 +173,7 @@ What it does:
 3. Drops a `.stignore` template so Syncthing skips `.archive/`, logs, and `.sync-conflict-*` noise.
 4. Scaffolds the context subfolders listed in `[contexts.allowed]` (if any).
 5. Prints next-step hints: share the folder via Syncthing, set `ANTHROPIC_API_KEY` /
-   `HA_TOKEN`, install the binary on the Pi, enable the systemd timer.
+   `HA_TOKEN`, install the binary on the Pi (`/share/todai/bin/`), enable the agent add-on.
 
 #### CLI design principles
 - Minimal flags for common operations, rich flags for power use
@@ -188,7 +190,8 @@ What it does:
 
 ### 3. AI Agentic Loop
 
-Runs on the Raspberry Pi 5 via systemd timer (or Home Assistant automation).
+Runs on the Raspberry Pi 5 as a custom HA add-on with an internal scheduler (the Pi runs HAOS,
+so there are no user systemd timers; see Prerequisites).
 
 #### Schedule
 - **Morning run (07:00):** Daily briefing. What's due today, what's coming this week,
@@ -259,7 +262,7 @@ agent/
 
 Secrets are **never read from synced files**. The agent reads the env-var name from
 `[ai].api_key_env` / `[notifications].homeassistant_token_env` and looks the value up at
-runtime. Setup of those env vars happens via systemd `EnvironmentFile=` or HA secrets,
+runtime. Setup of those env vars happens via the add-on configuration / HA secrets,
 documented in `DEPLOY.md` (script-driven, user runs locally).
 
 #### Home Assistant notification integration
@@ -323,7 +326,7 @@ Next agent tick sees status=done (or snoozed reminders), does not re-notify
 Snooze actions map to `todai snooze <id> --for 1h` (or `--for 1d`). Because the CLI owns the
 write path, HA never touches markdown directly and we don't have two codepaths that can
 disagree. The CLI must therefore be deployable to both the PC (WSL) and the Pi — cross-compile
-`aarch64-unknown-linux-gnu` is already in the prerequisites.
+`aarch64-unknown-linux-musl` (static) is already in the prerequisites.
 
 #### Syncthing conflict handling (keep it simple)
 
@@ -428,16 +431,23 @@ retain_days = 14
 
 ### On development machine (WSL)
 - Rust toolchain (already installed)
-- Cross-compilation target: `rustup target add aarch64-unknown-linux-gnu`
+- Cross-compilation target: `rustup target add aarch64-unknown-linux-musl` (static; must run in HA's Alpine container)
 - `cross` tool for easy ARM64 builds: `cargo install cross`
 
-### On Raspberry Pi 5
-- Syncthing installed and configured
-- Python 3.11+ with venv
-- `anthropic` Python package
-- Home Assistant with Companion app configured
-- Systemd timer for the agent loop
-- Claude API key stored securely (environment variable or HA secrets)
+### On Raspberry Pi 5 (HAOS 17.x)
+The Pi runs **Home Assistant OS**, not general-purpose Linux. No `apt`, no user systemd units:
+everything deploys as HA add-ons.
+
+- **Syncthing**: community add-on, data dir on `/share/todai` so other containers can reach the store
+- **Agent**: custom local add-on (container bundling the Python agent + `todai` binary; scheduling
+  is a loop/cron *inside* the add-on, replacing the earlier systemd-timer idea)
+- **`todai` binary**: build for `aarch64-unknown-linux-musl` (static). `shell_command` executes
+  inside the HA core container (Alpine), where a glibc build won't run. Place the binary at
+  `/share/todai/bin/todai` so both HA (action buttons) and the agent add-on call the same one.
+- Home Assistant Companion app configured on the phone
+- **Tailscale add-on** (installed 2026-06): remote reach for HA Assist capture and admin away from
+  home. Not part of the sync path; Syncthing owns store-and-forward.
+- Claude API key via add-on configuration / HA secrets, surfaced to the agent as an env var
 
 ### On Android phone
 - Syncthing app (for todo file sync, optional, could be view-only)
@@ -462,7 +472,7 @@ retain_days = 14
 - [ ] Fuzzy matching for todo slugs
 - [ ] Shell completions
 - [ ] AI reasoning with Claude API (contextual awareness)
-- [ ] Systemd timer on Pi
+- [ ] Agent add-on on the Pi (HAOS local add-on with internal scheduler)
 - [ ] HA notification with action buttons (done, snooze)
 
 ### Phase 3: Intelligence
@@ -514,14 +524,13 @@ Recording these so we don't relitigate them later. If we change our minds, updat
 | 15 | HA action buttons shell out to `todai` on the Pi, which owns writes | CLI is single source of truth for writes too — no two-codepath drift |
 | 16 | Agent abstracts over LLM providers via `LlmProvider` interface | Vendor-agnostic; switching to OpenAI/Ollama is a config change, not a code change |
 | 17 | Secrets never live in synced files or on Claude's surface | API keys / HA tokens read from env vars at runtime; setup via user-run scripts only |
+| 18 | Archive is two-stage: `done` flags (status + `completed`), a separate `todai archive` sweep moves items done/cancelled > `archive_after_days` into `.archive/`, mirroring the context tree | Keeps an "undo" window after completion; sweep is idempotent and agent-driven (daily), not bolted onto `done` (which would never re-touch an old item). `archive_done = false` = flag-only. Known limitation: `.archive/` is in `.stignore`, so archives live only on the machine that swept them; drop it from `.stignore` if cross-device archive history is ever wanted |
+| 19 | Mobile is read-only Syncthing + HA action buttons (Path A); no direct markdown editing on the phone (Path B) | Editing YAML frontmatter on a phone keyboard is miserable and corruption-prone, and phone-side writes are the likeliest conflict source. Action buttons (done/snooze) cover the 90% case and still route through the CLI on the Pi (decision #15). Future mobile quick-capture should be an HA button that shells `todai add`, not Path B |
+| 20 | Pi runs HAOS (17.x), so deployment is add-on-based: Syncthing community add-on, agent as a custom local add-on with internal scheduler, `todai` built static (`aarch64-unknown-linux-musl`) at `/share/todai/bin/todai` | No `apt`/systemd on HAOS. `shell_command` runs inside HA's Alpine container, so the binary must be static musl, and one shared binary on `/share` keeps the single-write-path rule (#15) intact. Tailscale add-on provides remote reach (Assist/admin away from home); it is reachability only, Syncthing remains the store-and-forward transport |
 
 ## Still-open questions
 
-1. Should done todos be archived to a separate folder or just status-flagged?
-   *Current lean: archive after N days, keeps the active folder clean. Decide during POC.*
-2. Should the mobile have write access (Syncthing RW) beyond HA action buttons?
-   *Current lean: sync read-focused + action buttons cover the common "mark done" case.
-   Editing markdown on mobile is painful; skip it.*
+*(none currently — see decisions #18 and #19 for the two that were here)*
 
 ## File Structure (this repo)
 
@@ -543,7 +552,8 @@ todai/
 │   ├── notifier.py
 │   ├── reasoning.py
 │   └── requirements.txt
-└── systemd/                # systemd units for the Pi
-    ├── todai-agent.service
-    └── todai-agent.timer
+└── addon/                  # HA local add-on packaging for the agent (Pi runs HAOS)
+    ├── config.yaml         # add-on manifest (schema for API key env, schedule, etc.)
+    ├── Dockerfile          # bundles agent + todai musl binary
+    └── run.sh              # loop/cron entrypoint (replaces systemd timer)
 ```

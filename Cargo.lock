@@ -698,6 +698,7 @@ dependencies = [
  "clap",
  "colored",
  "dirs",
+ "libc",
  "nanoid",
  "serde",
  "serde-saphyr",

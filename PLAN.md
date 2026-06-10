@@ -432,7 +432,9 @@ retain_days = 14
 ### On development machine (WSL)
 - Rust toolchain (already installed)
 - Cross-compilation target: `rustup target add aarch64-unknown-linux-musl` (static; must run in HA's Alpine container)
-- `cross` tool for easy ARM64 builds: `cargo install cross`
+- Build with rust-lld, no Docker or `cross` needed (deps are pure Rust):
+  `RUSTFLAGS="-C linker=rust-lld" cargo build --target aarch64-unknown-linux-musl --release`
+  Validated 2026-06-10: fully static ELF, full add/list/done round-trip passes under qemu-aarch64.
 
 ### On Raspberry Pi 5 (HAOS 17.x)
 The Pi runs **Home Assistant OS**, not general-purpose Linux. No `apt`, no user systemd units:

@@ -10,6 +10,12 @@ mod time_util;
 mod todo;
 
 fn main() -> Result<()> {
+    // Rust ignores SIGPIPE, turning `todai list | head` into a stdout panic.
+    // Restore the default disposition so a closed pipe ends the process quietly.
+    unsafe {
+        libc::signal(libc::SIGPIPE, libc::SIG_DFL);
+    }
+
     let args = cli::Cli::parse();
     let root = config::resolve_root(args.path.as_deref())?;
 

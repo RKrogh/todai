@@ -85,6 +85,12 @@ pub enum Command {
         id: String,
     },
 
+    /// Open a todo in $VISUAL/$EDITOR; re-validated before saving
+    Edit {
+        /// Todo identifier (id, slug, or fuzzy substring)
+        id: String,
+    },
+
     /// Sweep done/cancelled todos older than archive_after_days into .archive/
     Archive {
         /// Show what would be archived without moving anything

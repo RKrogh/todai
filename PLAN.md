@@ -457,25 +457,26 @@ everything deploys as HA add-ons.
 
 ## Implementation Phases
 
-### Phase 1: POC (current goal)
-- [ ] Cargo project scaffolding with `clap`, `serde`, `serde-saphyr`, `chrono`, `chrono-tz`, `nanoid`, `anyhow`
-- [ ] Frontmatter schema as a typed `Todo` struct with round-trip tests
-- [ ] Filesystem layer: read/write markdown+frontmatter, UTC serialization, slug + nanoid collision handling
-- [ ] CLI commands: `init`, `add`, `list`, `today`, `show`, `done` (with completion metadata), `edit`
-- [ ] `--json` output on `list` / `today` / `show`
-- [ ] Spawn-on-done recurring logic with `prev_id` chain
-- [ ] Simple Python agent that shells out to `todai list --json`, sends a test HA notification
-- [ ] Agent writes `notified_at` back to the file after sending
-- [ ] Offline fallback: dumb notification if Anthropic API call fails
+### Phase 1: POC (done except sync verification)
+- [x] Cargo project scaffolding with `clap`, `serde`, `serde-saphyr`, `chrono`, `chrono-tz`, `nanoid`, `anyhow`
+- [x] Frontmatter schema as a typed `Todo` struct with round-trip tests
+- [x] Filesystem layer: read/write markdown+frontmatter, UTC serialization, slug + nanoid collision handling
+- [x] CLI commands: `init`, `add`, `list`, `today`, `show`, `done` (with completion metadata), `edit`
+- [x] `--json` output on `list` / `today` / `show`
+- [x] Spawn-on-done recurring logic with `prev_id` chain
+- [x] Simple Python agent that shells out to `todai list --json`, sends a test HA notification
+- [x] Agent writes `notified_at` back to the file after sending
+- [x] Offline fallback: dumb notification if Anthropic API call fails
 - [ ] Verify Syncthing sync between WSL and Pi
 
 ### Phase 2: Core features
-- [ ] Full CLI: `edit`, `rm`, `search`, `remind`, `contexts`, `upcoming`
+- [x] CLI: `edit` (plus `archive`, `snooze`, `notified` beyond original plan)
+- [ ] Remaining CLI: `rm`, `search`, `remind`, `contexts`, `upcoming`
 - [ ] Fuzzy matching for todo slugs
 - [ ] Shell completions
-- [ ] AI reasoning with Claude API (contextual awareness)
+- [x] AI reasoning with Claude API (provider abstraction, key via env var only)
 - [ ] Agent add-on on the Pi (HAOS local add-on with internal scheduler)
-- [ ] HA notification with action buttons (done, snooze)
+- [x] HA notification with action buttons (done, snooze) — HA automation wiring per DEPLOY.md, unverified on device
 
 ### Phase 3: Intelligence
 - [ ] Calendar integration (Google Calendar via API or HA integration)

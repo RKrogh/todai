@@ -37,7 +37,9 @@ notifications through Home Assistant.
 
 ## Current phase
 
-Phase 1 (POC): Basic CLI with `add`, `list`, `done`, `show`. Simple agent script.
+Phase 1 (POC) complete except live Syncthing/Pi verification. Phase 2 partially done
+(`edit`, `archive`, `snooze`, Claude provider, HA action buttons). Next: deploy to the Pi
+per `DEPLOY.md`, then remaining Phase 2 CLI (`rm`, `search`, `remind`, `contexts`, `upcoming`).
 
 ## NDA / sensitivity
 
